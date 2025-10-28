@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจัดเก็บ Link</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Font "Sarabun" -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Lucide Icons (REMOVED defer) -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+        }
+        /* Custom styles */
+        .card {
+            background-color: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        /* Style file input */
+        .file-input {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background-color: #f3f4f6;
+            color: #374151;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .file-input:hover {
+            background-color: #e5e7eb;
+        }
+        .file-input input[type="file"] {
+            display: none;
+        }
+        .file-name {
+            margin-left: 0.5rem;
+            font-style: italic;
+            color: #6b7280;
+        }
+        #page-admin, #password-modal {
+            display: none; /* Hidden by default */
+        }
+        .accordion-body {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+            padding: 0 1.25rem;
+        }
+        .accordion-body:not(.hidden) {
+            max-height: 2000px; /* Set a large max-height for expansion */
+            padding: 1rem 1.25rem;
+        }
+    </style>
+</head>
+<body class="bg-blue-50 min-h-screen text-gray-800">
+
+    <!-- Main App Container -->
+    <div id="app" class="container mx-auto p-4 md:p-8">
+
+        <!-- ===== Home Page (Dashboard) ===== -->
+        <div id="page-home">
+            <header class="relative mb-6 py-2">
+                <h1 class="text-3xl md:text-4xl font-bold text-blue-600 text-center">ระบบจัดเก็บ Link 🚀</h1>
+                <button id="btn-show-admin" title="ผู้ดูแลระบบ" class="absolute top-1/2 right-0 -translate-y-1/2 p-2 rounded-full text-gray-600 hover:bg-gray-200 hover:text-blue-600 transition duration-300">
+                    <i data-lucide="user-cog" class="w-8 h-8"></i>
+                </button>
+            </header>
+
+            <!-- New Home Page Design (Accordion List) -->
+            <main id="dashboard-content" class="space-y-4 max-w-4xl mx-auto">
+                <!-- Loading state -->
+                <div id="dashboard-loading" class="col-span-full text-center py-10">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+                    <p class="mt-4 text-lg text-gray-600">กำลังโหลดข้อมูล...</p>
+                </div>
+                <!-- Data will be populated here -->
+            </main>
+        </div>
+
+        <!-- ===== Admin Page ===== -->
+        <div id="page-admin">
+            <header class="relative mb-6 py-2">
+                <h1 class="text-3xl md:text-4xl font-bold text-blue-700 text-center">หน้า Admin 🔐</h1>
+                <button id="btn-show-home" title="หน้าแรก" class="absolute top-1/2 right-0 -translate-y-1/2 p-2 rounded-full text-gray-600 hover:bg-gray-200 hover:text-blue-700 transition duration-300">
+                    <i data-lucide="home" class="w-8 h-8"></i>
+                </button>
+            </header>
+
+            <main class="space-y-6">
+                <!-- Topic Management -->
+                <section class="card p-6">
+                    <h2 class="text-2xl font-semibold mb-4 text-gray-700">1. จัดการหัวข้อ Link</h2>
+                    <div class="flex flex-wrap gap-4 items-end">
+                        <div class="flex-grow">
+                            <label for="topic-select" class="block text-sm font-medium text-gray-700 mb-1">เลือกหัวข้อที่มีอยู่ 📚</label>
+                            <select id="topic-select" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">-- กรุณาเลือกหัวข้อ --</option>
+                                <!-- Topics populated by JS -->
+                            </select>
+                        </div>
+                        <div class="flex-shrink-0">
+                            <button id="btn-new-topic" class="w-full bg-blue-600 text-white px-4 py-2 rounded-md shadow-sm hover:bg-blue-700 transition duration-300">
+                                <i data-lucide="plus" class="inline-block w-4 h-4 mr-1"></i> สร้างหัวข้อใหม่
+                            </button>
+                        </div>
+                        <!-- NEW: Edit Topic Button -->
+                        <div class="flex-shrink-0">
+                            <button id="btn-edit-topic" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md shadow-sm hover:bg-indigo-700 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                <i data-lucide="edit" class="inline-block w-4 h-4 mr-1"></i> แก้ไขหัวข้อนี้
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ===== NEW: Database Info Section ===== -->
+                <section class="card p-6">
+                    <h2 class="text-2xl font-semibold mb-4 text-gray-700 flex items-center">
+                        <i data-lucide="database" class="inline-block w-6 h-6 mr-2 text-indigo-600"></i>
+                        Link ฐานข้อมูล
+                    </h2>
+                    
+                    <!-- Button -->
+                    <div class="mb-5">
+                        <a href="https://docs.google.com/spreadsheets/d/16rdroAa5SkIIIapiqlNeUtjA11o8mFyDF46zF9xThB4/edit?usp=sharing" target="_blank" rel="noopener noreferrer" 
+                           class="inline-flex items-center bg-indigo-600 text-white px-5 py-2 rounded-md shadow-sm hover:bg-indigo-700 transition duration-300 font-medium">
+                            <i data-lucide="external-link" class="inline-block w-4 h-4 mr-2"></i>
+                            เปิด Google Sheet ฐานข้อมูล
+                        </a>
+                    </div>
+
+                    <!-- Details -->
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-600 mb-3">รายละเอียดฐานข้อมูล</h3>
+                        <ul class="space-y-3 text-sm text-gray-700">
+                            <li class="flex items-start">
+                                <i data-lucide="mail" class="w-4 h-4 mr-3 text-gray-500 flex-shrink-0 mt-1"></i>
+                                <div>
+                                    <strong>อีเมลผู้สร้าง:</strong>
+                                    <span class="ml-1">g4779pitakchaiph@kurupatana.ac.th</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start">
+                                <i data-lucide="archive" class="w-4 h-4 mr-3 text-gray-500 flex-shrink-0 mt-1"></i>
+                                <div>
+                                    <strong>ที่อยู่ฐานข้อมูล:</strong>
+                                    <span class="ml-1">/11-App Sheet/ระบบจัดเก็บ Link/</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start">
+                                <i data-lucide="folder-open" class="w-4 h-4 mr-3 text-gray-500 flex-shrink-0 mt-1"></i>
+                                <div>
+                                    <strong>ที่อยู่โฟลเดอร์เก็บข้อมูล:</strong>
+                                    <span class="ml-1">/11-App Sheet/ระบบจัดเก็บ Link/เก็บข้อมูลไฟล์ลิงค์ รูปภาพ เอกสาร</span>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </section>
+                <!-- ===== END: Database Info Section ===== -->
+
+                <!-- Link Entry Form (Hidden until topic selected) -->
+                <section id="link-form-section" class="card p-6 hidden">
+                    <h2 class="text-2xl font-semibold mb-4 text-gray-700">2. เพิ่ม / แก้ไขข้อมูล Link 📝</h2>
+                    <h3 id="current-topic-title" class="text-xl font-medium text-blue-600 mb-4"></h3>
+                    <form id="link-form" class="space-y-4">
+                        <input type="hidden" id="form-row-id">
+                        <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
+                            <!-- ลำดับที่ (ซ่อนไว้และกำหนดค่าอัตโนมัติ) -->
+                            <div class="md:col-span-1 hidden">
+                                <label for="form-order" class="block text-sm font-medium text-gray-700">ลำดับที่</label>
+                                <input type="number" id="form-order" class="mt-1 block w-full p-2 bg-white border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
+                            </div>
+                            <!-- คำอธิบาย -->
+                            <div class="md:col-span-2">
+                                <label for="form-description" class="block text-sm font-medium text-gray-700">คำอธิบาย</label>
+                                <input type="text" id="form-description" class="mt-1 block w-full p-2 bg-white border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
+                            </div>
+                            <!-- ข้อมูลลิงค์ -->
+                            <div class="md:col-span-4">
+                                <label for="form-link" class="block text-sm font-medium text-gray-700">ข้อมูลลิงค์ (URL)</label>
+                                <input type="url" id="form-link" placeholder="https://..." class="mt-1 block w-full p-2 bg-white border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                        </div>
+                        
+                        <!-- File Uploads -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">อัพโหลดไฟล์ 1 📄</label>
+                                <label class="file-input">
+                                    <span>เลือกไฟล์...</span>
+                                    <input type="file" id="form-file1" class="file-input-control" accept="image/*,application/*,text/*">
+                                </label>
+                                <span id="file-name1" class="file-name"></span>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">อัพโหลดไฟล์ 2 🖼️</label>
+                                <label class="file-input">
+                                    <span>เลือกไฟล์...</span>
+                                    <input type="file" id="form-file2" class="file-input-control" accept="image/*,application/*,text/*">
+                                </label>
+                                <span id="file-name2" class="file-name"></span>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">อัพโหลดไฟล์ 3 📁</label>
+                                <label class="file-input">
+                                    <span>เลือกไฟล์...</span>
+                                    <input type="file" id="form-file3" class="file-input-control" accept="image/*,application/*,text/*">
+                                </label>
+                                <span id="file-name3" class="file-name"></span>
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="flex gap-4 pt-4">
+                            <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-md shadow-sm hover:bg-blue-700 transition duration-300">
+                                <i data-lucide="save" class="inline-block w-4 h-4 mr-1"></i> บันทึกข้อมูล
+                            </button>
+                            <button type="button" id="btn-clear-form" class="bg-gray-300 text-gray-800 px-6 py-2 rounded-md shadow-sm hover:bg-gray-400 transition duration-300">
+                                <i data-lucide="x" class="inline-block w-4 h-4 mr-1"></i> ล้างฟอร์ม
+                            </button>
+                        </div>
+                    </form>
+                </section>
+
+                <!-- Data Table (Hidden until topic selected) -->
+                <section id="link-table-section" class="card p-6 hidden">
+                    <h2 class="text-2xl font-semibold mb-4 text-gray-700">3. ข้อมูล Link ทั้งหมดในหัวข้อนี้</h2>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ลำดับ</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">คำอธิบาย</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Link</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ไฟล์</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="link-table-body" class="bg-white divide-y divide-gray-200">
+                                <!-- Data rows populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <!-- ===== Password Modal ===== -->
+        <div id="password-modal" class="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50">
+            <div class="card p-8 m-4 max-w-sm w-full">
+                <h2 class="text-2xl font-semibold mb-4 text-center">🔐 ยืนยันตัวตน</h2>
+                <p class="text-center text-gray-600 mb-6">กรุณาใส่รหัสผ่านเพื่อเข้าสู่หน้าผู้ดูแลระบบ</p>
+                <form id="password-form">
+                    <input type="password" id="password-input" class="w-full p-3 bg-white border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-center" placeholder="****">
+                    <div class="flex gap-4 mt-6">
+                        <button type="button" id="btn-cancel-password" class="w-full bg-gray-300 text-gray-800 px-4 py-2 rounded-md shadow-sm hover:bg-gray-400 transition duration-300">ยกเลิก</button>
+                        <button type="submit" class="w-full bg-blue-600 text-white px-4 py-2 rounded-md shadow-sm hover:bg-blue-700 transition duration-300">ตกลง</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="text-center text-xs text-gray-500 mt-12 py-4 border-t border-gray-200">
+            Powered by: Gemini AI (Initial Code Generation)<br>
+            Implemented & Authored by: นายพิทักษ์ชัย ผายบึงแก้ว
+        </footer>
+    </div>
+
+    <script>
+        // --- Constants ---
+        const GS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzcZwovSW9d_wYajnwM8NAgV6MbRC-crFXkpUxTGNnifwaLzGGj-wsPsE3WJ91VnMqN/exec';
+
+        // --- Global State ---
+        let allData = {};
+        let topics = [];
+        let currentTopic = '';
+
+        // --- DOM Elements ---
+        const pageHome = document.getElementById('page-home');
+        const pageAdmin = document.getElementById('page-admin');
+        const passwordModal = document.getElementById('password-modal');
+        const dashboardContent = document.getElementById('dashboard-content');
+        const dashboardLoading = document.getElementById('dashboard-loading');
+        const topicSelect = document.getElementById('topic-select');
+        const btnEditTopic = document.getElementById('btn-edit-topic'); // NEW: Edit button
+        const linkFormSection = document.getElementById('link-form-section');
+        const linkTableSection = document.getElementById('link-table-section');
+        const currentTopicTitle = document.getElementById('current-topic-title');
+        const linkTableBody = document.getElementById('link-table-body');
+        const linkForm = document.getElementById('link-form');
+        const formRowId = document.getElementById('form-row-id');
+        const formOrder = document.getElementById('form-order');
+        const formDescription = document.getElementById('form-description');
+        const formLink = document.getElementById('form-link');
+        const fileInputs = [
+            document.getElementById('form-file1'),
+            document.getElementById('form-file2'),
+            document.getElementById('form-file3')
+        ];
+        const fileNameSpans = [
+            document.getElementById('file-name1'),
+            document.getElementById('file-name2'),
+            document.getElementById('file-name3')
+        ];
+
+        // --- Page Navigation ---
+        function showPage(pageName) {
+            pageHome.style.display = 'none';
+            pageAdmin.style.display = 'none';
+            if (pageName === 'home') {
+                pageHome.style.display = 'block';
+            } else if (pageName === 'admin') {
+                pageAdmin.style.display = 'block';
+            }
+        }
+
+        // --- Data Fetching ---
+        async function fetchData() {
+            dashboardLoading.style.display = 'block';
+            dashboardContent.innerHTML = ''; // Clear old content
+            try {
+                // เราใช้ fetch GET ธรรมดา และ GS จะคืนค่าเป็น JSON
+                const response = await fetch(`${GS_WEB_APP_URL}?action=readData`, {
+                    method: 'GET',
+                    mode: 'cors', // Explicitly set mode
+                    redirect: 'follow' // Handle redirects
+                });
+                if (!response.ok) throw new Error('Network response was not ok');
+                const result = await response.json();
+                
+                if (result.success) {
+                    allData = result.data;
+                    topics = Object.keys(allData).sort();
+                    populateTopicSelect();
+                    renderDashboard();
+                } else {
+                    throw new Error(result.error || 'Failed to fetch data');
+                }
+            } catch (error) {
+                console.error('Fetch Data Error:', error);
+                Swal.fire('เกิดข้อผิดพลาด', `ไม่สามารถโหลดข้อมูลได้: ${error.message}`, 'error');
+                dashboardContent.innerHTML = `<div class="col-span-full text-center py-10 text-red-500">❌ ไม่สามารถโหลดข้อมูลได้</div>`;
+            } finally {
+                dashboardLoading.style.display = 'none';
+            }
+        }
+
+        // --- GDrive URL Helper ---
+        /**
+         * Converts a Google Drive viewer URL to a direct thumbnail URL.
+         * @param {string} url The original Google Drive URL.
+         * @returns {string} A direct-renderable image URL.
+         */
+        function getDirectGdriveUrl(url) {
+            if (!url) return url;
+            let fileId = '';
+            
+            // Match "https://drive.google.com/file/d/FILE_ID/view..."
+            // Or "https://drive.google.com/file/d/FILE_ID"
+            let match1 = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+            if (match1 && match1[1]) {
+                fileId = match1[1];
+            }
+            
+            // Match "https://drive.google.com/uc?id=FILE_ID..."
+            let match2 = url.match(/drive\.google\.com\/uc\?id=([a-zA-Z0-9_-]+)/);
+            if (match2 && match2[1]) {
+                fileId = match2[1];
+            }
+
+            if (fileId) {
+                // Use the thumbnail link format which is more reliable
+                return `https://lh3.googleusercontent.com/d/${fileId}`;
+            }
+            
+            // If it's not a recognizable GDrive link, return original
+            return url;
+        }
+
+
+        // --- Dashboard Rendering (Accordion Style) ---
+        function renderDashboard() {
+            dashboardContent.innerHTML = ''; // Clear previous content
+            if (topics.length === 0) {
+                dashboardContent.innerHTML = `<div class="col-span-full text-center py-10 text-gray-500">ไม่มีข้อมูล...</div>`;
+                return;
+            }
+
+            topics.forEach((topic, index) => {
+                const topicData = allData[topic] || [];
+                let itemsHtml = '';
+
+                // Sort data by 'ลำดับที่' for display
+                topicData.sort((a, b) => (a['ลำดับที่'] || 0) - (b['ลำดับที่'] || 0));
+
+                topicData.forEach(item => {
+                    let fileHtml = '';
+                    const files = [
+                        { name: item['ไฟล์ 1'], url: item['File 1 URL'] },
+                        { name: item['ไฟล์ 2'], url: item['File 2 URL'] },
+                        { name: item['ไฟล์ 3'], url: item['File 3 URL'] }
+                    ];
+                    
+                    const validFiles = files.filter(f => f.url); // Filter for files that have a URL
+                    const hasImages = validFiles.some(file => isImageUrl(file.name)); // Check if this item has any images
+                    const hasDocuments = validFiles.some(file => !isImageUrl(file.name)); // Check if this item has any documents
+
+                    if (validFiles.length > 0) {
+                        fileHtml += '<div class="mt-3 grid grid-cols-3 gap-2 items-start">'; // Added items-start
+                        validFiles.forEach(file => {
+                            // Get the direct URL for rendering
+                            const renderUrl = getDirectGdriveUrl(file.url);
+
+                            if (isImageUrl(file.name)) { // Check the file NAME
+                                // MODIFIED: Added image-thumbnail-container and hidden class
+                                fileHtml += `
+                                    <a href="${file.url}" target="_blank" rel="noopener noreferrer" class="image-thumbnail-container hidden">
+                                        <img src="${renderUrl}" alt="thumbnail" class="w-full h-auto max-h-[300px] rounded-md shadow-md hover:opacity-80 transition-opacity">
+                                    </a>`;
+                            } else {
+                                // CHANGED: Show file card with name, added 'document-file-container' and 'hidden'
+                                fileHtml += `
+                                    <a href="${file.url}" target="_blank" rel="noopener noreferrer" 
+                                       class="document-file-container hidden flex flex-col items-center justify-center w-full h-48 p-4 
+                                              bg-blue-50 rounded-md shadow-md text-gray-700 
+                                              hover:bg-gray-200 hover:text-blue-600 transition-all duration-200"
+                                       title="${file.name}">
+                                        
+                                        <i data-lucide="file-text" class="w-10 h-10 mb-3 text-gray-500"></i>
+                                        <span class="text-xs font-semibold text-center w-full truncate">
+                                            ${file.name}
+                                        </span>
+                                    </a>`;
+                            }
+                        });
+                        fileHtml += '</div>';
+                    }
+                    
+                    // Prepare item-level toggle button for images
+                    let itemToggleImgBtnHtml = '';
+                    if (hasImages) {
+                        itemToggleImgBtnHtml = `
+                            <button title="แสดง/ซ่อนรูปภาพ" class="btn-toggle-item-images p-2 rounded-full hover:bg-gray-200">
+                                <i data-lucide="image" class="w-5 h-5 text-gray-600"></i>
+                            </button>
+                        `;
+                    }
+                    
+                    // Prepare item-level toggle button for documents (NEW)
+                    let itemToggleDocsBtnHtml = '';
+                    if (hasDocuments) {
+                        itemToggleDocsBtnHtml = `
+                            <button title="แสดง/ซ่อนไฟล์เอกสาร" class="btn-toggle-item-docs p-2 rounded-full hover:bg-gray-200">
+                                <i data-lucide="file-text" class="w-5 h-5 text-gray-600"></i>
+                            </button>
+                        `;
+                    }
+
+
+                    // MODIFIED: Added layout for order number and item-level toggle
+                    itemsHtml += `
+                        <li class="py-4 px-4 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+                            <div class="flex items-start gap-3">
+                                <span class="text-lg font-medium text-gray-600 w-8 text-right pt-0.5">${item['ลำดับที่']}.</span>
+                                <div class="flex-1">
+                                    <div class="flex justify-between items-center">
+                                        <a href="${item['ข้อมูลลิงค์'] || '#'}" target="_blank" rel="noopener noreferrer" class="text-lg font-medium text-blue-700 hover:underline">${item['คำอธิบาย']}</a>
+                                        <div class="flex gap-1">
+                                            ${itemToggleDocsBtnHtml}
+                                            ${itemToggleImgBtnHtml}
+                                        </div>
+                                    </div>
+                                    <p class="text-sm text-gray-500">${item['ข้อมูลลิงค์'] ? '🔗' : ''} ${item['ข้อมูลลิงค์']}</p>
+                                    ${fileHtml}
+                                </div>
+                            </div>
+                        </li>
+                    `;
+                });
+
+                // MODIFIED: REMOVED global toggle image button
+                const accordionHtml = `
+                    <div class="card overflow-hidden">
+                        <div class="accordion-header flex justify-between items-center w-full p-5 text-left bg-white hover:bg-gray-50 transition-colors duration-200 cursor-pointer" data-target="accordion-body-${index}">
+                            <h2 class="text-xl font-semibold text-gray-800">
+                                💡  ${topic}
+                            </h2>
+                            <div class="flex items-center gap-3">
+                                <i data-lucide="chevron-down" class="accordion-icon w-6 h-6 text-blue-600 transition-transform duration-300"></i>
+                            </div>
+                        </div>
+                        <div id="accordion-body-${index}" class="accordion-body hidden">
+                            <ul class="divide-y divide-gray-200 bg-white">
+                                ${itemsHtml || '<li class="py-4 px-4 text-gray-500">ไม่มีข้อมูลในหัวข้อนี้</li>'}
+                            </ul>
+                        </div>
+                    </div>
+                `;
+                dashboardContent.innerHTML += accordionHtml;
+            });
+            
+            // REMOVED: Old accordion functionality. It's now in DOMContentLoaded
+
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons(); // Re-render icons
+            }
+        }
+
+        function isImageUrl(url) {
+            if (!url) return false;
+            return /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(url.split('?')[0]);
+        }
+
+        // --- Admin: Topic Management ---
+        function populateTopicSelect() {
+            topicSelect.innerHTML = '<option value="">-- กรุณาเลือกหัวข้อ --</option>';
+            topics.forEach(topic => {
+                const option = document.createElement('option');
+                option.value = topic;
+                option.textContent = topic;
+                topicSelect.appendChild(option);
+            });
+        }
+
+        topicSelect.addEventListener('change', () => {
+            currentTopic = topicSelect.value;
+            if (currentTopic) {
+                linkFormSection.style.display = 'block';
+                linkTableSection.style.display = 'block';
+                currentTopicTitle.textContent = `หัวข้อ: ${currentTopic}`;
+                renderLinkTable(currentTopic);
+                clearForm(); // Will set the new automatic order number
+                btnEditTopic.disabled = false; // NEW: Enable edit button
+            } else {
+                linkFormSection.style.display = 'none';
+                linkTableSection.style.display = 'none';
+                btnEditTopic.disabled = true; // NEW: Disable edit button
+            }
+        });
+
+        document.getElementById('btn-new-topic').addEventListener('click', async () => {
+            const { value: newTopicName } = await Swal.fire({
+                title: 'สร้างหัวข้อใหม่',
+                input: 'text',
+                inputLabel: 'กรุณาใส่ชื่อหัวข้อ Link ใหม่',
+                inputPlaceholder: 'เช่น "งานวิจัย", "บทความน่าสนใจ"',
+                showCancelButton: true,
+                confirmButtonText: 'สร้าง',
+                cancelButtonText: 'ยกเลิก',
+                inputValidator: (value) => {
+                    if (!value) {
+                        return 'กรุณาใส่ชื่อหัวข้อ!';
+                    }
+                }
+            });
+
+            if (newTopicName) {
+                Swal.fire({
+                    title: 'กำลังสร้างหัวข้อ...',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
+                });
+
+                try {
+                    const params = new URLSearchParams({
+                        action: 'createTopic',
+                        topic: newTopicName
+                    });
+                    
+                    const response = await fetch(GS_WEB_APP_URL, {
+                        method: 'POST',
+                        body: params
+                    });
+                    const result = await response.json();
+
+                    if (result.success) {
+                        Swal.fire('สำเร็จ!', 'สร้างหัวข้อใหม่เรียบร้อยแล้ว', 'success');
+                        await fetchData(); // Refresh all data
+                        topicSelect.value = newTopicName;
+                        topicSelect.dispatchEvent(new Event('change')); // Trigger change event
+                    } else {
+                        throw new Error(result.error || 'Unknown error');
+                    }
+                } catch (error) {
+                    Swal.fire('เกิดข้อผิดพลาด', `ไม่สามารถสร้างหัวข้อได้: ${error.message}`, 'error');
+                }
+            }
+        });
+
+        // --- NEW: Edit Topic Event Listener ---
+        btnEditTopic.addEventListener('click', async () => {
+            if (!currentTopic) return; // Should be disabled, but safety check
+
+            const { value: newTopicName } = await Swal.fire({
+                title: 'แก้ไขชื่อหัวข้อ',
+                input: 'text',
+                inputLabel: 'กรุณาใส่ชื่อหัวข้อใหม่',
+                inputValue: currentTopic, // Pre-fill with the current name
+                inputPlaceholder: 'เช่น "งานวิจัย", "บทความน่าสนใจ"',
+                showCancelButton: true,
+                confirmButtonText: 'บันทึก',
+                cancelButtonText: 'ยกเลิก',
+                inputValidator: (value) => {
+                    if (!value) {
+                        return 'กรุณาใส่ชื่อหัวข้อ!';
+                    }
+                    if (value === currentTopic) {
+                        return 'ชื่อหัวข้อเหมือนเดิม';
+                    }
+                }
+            });
+
+            if (newTopicName && newTopicName !== currentTopic) {
+                Swal.fire({
+                    title: 'กำลังแก้ไขหัวข้อ...',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
+                });
+
+                try {
+                    const params = new URLSearchParams({
+                        action: 'renameTopic',
+                        oldTopicName: currentTopic,
+                        newTopicName: newTopicName
+                    });
+                    
+                    const response = await fetch(GS_WEB_APP_URL, {
+                        method: 'POST',
+                        body: params
+                    });
+                    const result = await response.json();
+
+                    if (result.success) {
+                        Swal.fire('สำเร็จ!', 'แก้ไขชื่อหัวข้อเรียบร้อยแล้ว', 'success');
+                        await fetchData(); // Refresh all data
+                        topicSelect.value = newTopicName; // Select the new topic name
+                        topicSelect.dispatchEvent(new Event('change')); // Trigger change event
+                    } else {
+                        throw new Error(result.error || 'Unknown error');
+                    }
+                } catch (error) {
+                    Swal.fire('เกิดข้อผิดพลาด', `ไม่สามารถแก้ไขหัวข้อได้: ${error.message}`, 'error');
+                }
+            }
+        });
+
+        // --- Admin: Link Table ---
+        function renderLinkTable(topic) {
+            const data = allData[topic] || [];
+            linkTableBody.innerHTML = '';
+            if (data.length === 0) {
+                linkTableBody.innerHTML = '<tr><td colspan="5" class="px-4 py-4 text-center text-gray-500">ไม่มีข้อมูลในหัวข้อนี้</td></tr>';
+                return;
+            }
+
+            // Sort data by 'ลำดับที่' (Order)
+            data.sort((a, b) => (a['ลำดับที่'] || 0) - (b['ลำดับที่'] || 0));
+
+            data.forEach(item => {
+                const files = [
+                    { name: item['ไฟล์ 1'], url: item['File 1 URL'] },
+                    { name: item['ไฟล์ 2'], url: item['File 2 URL'] },
+                    { name: item['ไฟล์ 3'], url: item['File 3 URL'] }
+                ];
+                let fileHtml = files.map(f => {
+                    // CHANGED: Use item.name (not f.name)
+                    if (item[f.name]) { // Check if file name exists (e.g., item['ไฟล์ 1'])
+                         return `<a href="${item[f.url]}" target="_blank" class="text-blue-600 hover:underline block truncate" title="${item[f.name]}">${item[f.name]}</a>`;
+                    }
+                    return '<span>-</span>';
+                }).join('<br>'); // Join with line breaks for clarity
+
+                const row = document.createElement('tr');
+                row.className = "hover:bg-gray-50";
+                row.innerHTML = `
+                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">${item['ลำดับที่']}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-700">${item['คำอธิบาย']}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                        <a href="${item['ข้อมูลลิงค์']}" target="_blank" class="text-blue-600 hover:underline block truncate" title="${item['ข้อมูลลิงค์']}">${item['ข้อมูลลิงค์']}</a>
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${fileHtml}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium space-x-2">
+                        <button class="btn-edit text-blue-600 hover:text-blue-900" data-rowid="${item.rowId}" title="แก้ไข">
+                            <i data-lucide="edit" class="w-5 h-5"></i>
+                        </button>
+                        <button class="btn-delete text-red-600 hover:text-red-900" data-rowid="${item.rowId}" title="ลบ">
+                            <i data-lucide="trash-2" class="w-5 h-5"></i>
+                        </button>
+                    </td>
+                `;
+                linkTableBody.appendChild(row);
+            });
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons(); // Re-render icons
+            }
+        }
+
+        // --- Admin: Form Handling ---
+        linkForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            Swal.fire({
+                title: 'กำลังบันทึกข้อมูล...',
+                text: 'กำลังอัพโหลดไฟล์และบันทึก (อาจใช้เวลาสักครู่)...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                // 1. Prepare file data
+                const filePromises = fileInputs.map(input => fileToBase64(input.files[0]));
+                const fileDataArray = await Promise.all(filePromises); // [ { base64Data, ... } | null, ... ]
+
+                // 2. Prepare row data
+                const rowData = {
+                    'ลำดับที่': formOrder.value, // This is now auto-filled or from existing item
+                    'คำอธิบาย': formDescription.value,
+                    'ข้อมูลลิงค์': formLink.value,
+                    'rowId': formRowId.value // Will be empty for 'create'
+                };
+
+                // 3. Prepare payload
+                const params = new URLSearchParams();
+                params.append('action', rowData.rowId ? 'updateData' : 'createData');
+                params.append('topic', currentTopic);
+                params.append('rowData', JSON.stringify(rowData));
+                params.append('files', JSON.stringify(fileDataArray)); // Send array of 3 (null or file object)
+
+                // 4. Send to Google Apps Script
+                const response = await fetch(GS_WEB_APP_URL, {
+                    method: 'POST',
+                    body: params
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    Swal.fire('สำเร็จ!', result.message, 'success');
+                    await fetchData(); // Refresh data
+                    renderLinkTable(currentTopic); // Re-render table
+                    clearForm();
+                } else {
+                    throw new Error(result.error || 'Unknown error');
+                }
+
+            } catch (error) {
+                console.error('Form Submit Error:', error);
+                Swal.fire('เกิดข้อผิดพลาด', `ไม่สามารถบันทึกข้อมูลได้: ${error.message}`, 'error');
+            }
+        });
+
+        function clearForm() {
+            linkForm.reset();
+            formRowId.value = '';
+            
+            // กำหนดลำดับที่อัตโนมัติสำหรับรายการใหม่
+            // หาค่าลำดับที่สูงสุดที่มีอยู่ + 1
+            const currentData = allData[currentTopic] || [];
+            const maxOrder = currentData.length > 0 ? Math.max(...currentData.map(item => Number(item['ลำดับที่']) || 0)) : 0;
+            formOrder.value = maxOrder + 1;
+            
+            fileNameSpans.forEach(span => span.textContent = '');
+        }
+
+        document.getElementById('btn-clear-form').addEventListener('click', clearForm);
+
+        // --- Admin: Edit & Delete Actions ---
+        linkTableBody.addEventListener('click', (e) => {
+            const editButton = e.target.closest('.btn-edit');
+            const deleteButton = e.target.closest('.btn-delete');
+
+            if (editButton) {
+                const rowId = editButton.dataset.rowid;
+                const itemToEdit = allData[currentTopic].find(item => item.rowId == rowId);
+                if (itemToEdit) {
+                    formRowId.value = itemToEdit.rowId;
+                    formOrder.value = itemToEdit['ลำดับที่']; // Load existing order number
+                    formDescription.value = itemToEdit['คำอธิบาย'];
+                    formLink.value = itemToEdit['ข้อมูลลิงค์'];
+                    
+                    // Clear file inputs but show existing file names
+                    fileNameSpans[0].textContent = itemToEdit['ไฟล์ 1'] ? `(ไฟล์เดิม: ${itemToEdit['ไฟล์ 1']})` : '';
+                    fileNameSpans[1].textContent = itemToEdit['ไฟล์ 2'] ? `(ไฟล์เดิม: ${itemToEdit['ไฟล์ 2']})` : '';
+                    fileNameSpans[2].textContent = itemToEdit['ไฟล์ 3'] ? `(ไฟล์เดิม: ${itemToEdit['ไฟล์ 3']})` : '';
+                    fileInputs.forEach(input => input.value = ''); // Clear selected file
+                    
+                    linkFormSection.scrollIntoView({ behavior: 'smooth' });
+                }
+            }
+
+            if (deleteButton) {
+                const rowId = deleteButton.dataset.rowid;
+                Swal.fire({
+                    title: 'คุณแน่ใจหรือไม่?',
+                    text: "คุณต้องการลบข้อมูลแถวนี้ใช่หรือไม่",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'ใช่, ลบเลย!',
+                    cancelButtonText: 'ยกเลิก'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        deleteRow(rowId);
+                    }
+                });
+            }
+        });
+
+        async function deleteRow(rowId) {
+            try {
+                const params = new URLSearchParams({
+                    action: 'deleteData',
+                    topic: currentTopic,
+                    rowId: rowId
+                });
+
+                const response = await fetch(GS_WEB_APP_URL, {
+                    method: 'POST',
+                    body: params
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    Swal.fire('ลบสำเร็จ!', 'ข้อมูลถูกลบเรียบร้อยแล้ว', 'success');
+                    await fetchData(); // Refresh data
+                    renderLinkTable(currentTopic); // Re-render table
+                } else {
+                    throw new Error(result.error || 'Unknown error');
+                }
+            } catch (error) {
+                console.error('Delete Error:', error);
+                Swal.fire('เกิดข้อผิดพลาด', `ไม่สามารถลบข้อมูลได้: ${error.message}`, 'error');
+            }
+        }
+
+        // --- File & Image Handling ---
+        fileInputs.forEach((input, index) => {
+            input.addEventListener('change', () => {
+                const file = input.files[0];
+                if (file) {
+                    fileNameSpans[index].textContent = file.name;
+                } else {
+                    // Reset to show existing file name if "Cancel" is hit
+                    const editButton = linkTableBody.querySelector(`.btn-edit[data-rowid="${formRowId.value}"]`);
+                    if(formRowId.value && editButton) {
+                         const itemToEdit = allData[currentTopic].find(item => item.rowId == formRowId.value);
+                         fileNameSpans[index].textContent = itemToEdit[`ไฟล์ ${index + 1}`] ? `(ไฟล์เดิม: ${itemToEdit[`ไฟล์ ${index + 1}`]})` : '';
+                    } else {
+                        fileNameSpans[index].textContent = '';
+                    }
+                }
+            });
+        });
+
+        /**
+         * Converts a file to base64, resizing images if they are too large.
+         * @param {File} file The file to convert.
+         * @returns {Promise<Object|null>} A promise that resolves with { base64Data, mimeType, fileName } or null.
+         */
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                if (!file) {
+                    resolve(null);
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onerror = (error) => reject(error);
+                
+                // Check if it's an image that needs resizing
+                if (file.type.startsWith('image/') && file.size > 500 * 1024) { // Resize if > 500KB
+                    reader.onload = (e) => {
+                        const img = new Image();
+                        img.onerror = (error) => reject(error);
+                        img.onload = () => {
+                            try {
+                                const MAX_WH = 1000; // Max width/height 1000px
+                                let w = img.width;
+                                let h = img.height;
+
+                                if (w > h) {
+                                    if (w > MAX_WH) {
+                                        h = h * (MAX_WH / w);
+                                        w = MAX_WH;
+                                    }
+                                } else {
+                                    if (h > MAX_WH) {
+                                        w = w * (MAX_WH / h);
+                                        h = MAX_WH;
+                                    }
+                                }
+
+                                const canvas = document.createElement('canvas');
+                                canvas.width = w;
+                                canvas.height = h;
+                                const ctx = canvas.getContext('2d');
+                                ctx.drawImage(img, 0, 0, w, h);
+                                
+                                const resizedBase64 = canvas.toDataURL(file.type, 0.9); // 90% quality
+                                resolve({
+                                    base64Data: resizedBase64,
+                                    mimeType: file.type,
+                                    fileName: file.name
+                                });
+                            } catch(e) {
+                                reject(e);
+                            }
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file); // Read as Data URL to get source for Image
+                } else {
+                    // Not an image or small enough, just read as base64
+                    reader.onload = (e) => {
+                        resolve({
+                            base64Data: e.target.result,
+                            mimeType: file.type,
+                            fileName: file.name
+                        });
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+
+        // --- Authentication ---
+        document.getElementById('btn-show-admin').addEventListener('click', () => {
+            passwordModal.style.display = 'flex';
+            document.getElementById('password-input').focus();
+        });
+
+        document.getElementById('btn-cancel-password').addEventListener('click', () => {
+            passwordModal.style.display = 'none';
+            document.getElementById('password-form').reset();
+        });
+
+        document.getElementById('password-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const pass = document.getElementById('password-input').value;
+
+            Swal.fire({
+                title: 'กำลังตรวจสอบ...',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            try {
+                // ใช้ GET (ตาม doGet) เพื่อตรวจสอบรหัสผ่าน
+                const response = await fetch(`${GS_WEB_APP_URL}?action=checkPassword&pass=${encodeURIComponent(pass)}`, {
+                    method: 'GET',
+                    mode: 'cors', // Explicitly set mode
+                    redirect: 'follow' // Handle redirects
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    Swal.close();
+                    passwordModal.style.display = 'none';
+                    document.getElementById('password-form').reset();
+                    showPage('admin');
+                    // Data for admin page might already be loaded, but we can re-fetch if needed
+                    if (topics.length === 0) {
+                        fetchData(); // Fetch data if it wasn't loaded on home
+                    }
+                } else {
+                    Swal.fire('รหัสผ่านผิด!', 'กรุณาลองใหม่อีกครั้ง', 'error');
+                }
+            } catch (error) {
+                console.error('Password Check Error:', error);
+                Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถตรวจสอบรหัสผ่านได้', 'error');
+            }
+        });
+
+        document.getElementById('btn-show-home').addEventListener('click', () => {
+            showPage('home');
+            // Re-render dashboard in case data was updated
+            renderDashboard();
+            // Re-create icons for the home page
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        });
+
+        // --- Initial Load ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            showPage('home');
+            await fetchData(); // Load data AND render dashboard
+            
+            // Initial icon creation
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+
+            // --- Dashboard Event Delegation ---
+            dashboardContent.addEventListener('click', (e) => {
+                // Accordion click
+                // Check if not clicking the toggle btn
+                const accordionHeader = e.target.closest('.accordion-header');
+                if (accordionHeader && !e.target.closest('.btn-toggle-item-images') && !e.target.closest('.btn-toggle-item-docs')) { // MODIFIED: Check for new button class
+                    const targetId = accordionHeader.dataset.target;
+                    const targetBody = document.getElementById(targetId);
+                    const icon = accordionHeader.querySelector('.accordion-icon');
+                    
+                    if (targetBody && icon) {
+                        targetBody.classList.toggle('hidden');
+                        icon.classList.toggle('rotate-180');
+                    }
+                }
+
+                // Toggle Item Images click (EXISTING)
+                const toggleItemBtn = e.target.closest('.btn-toggle-item-images');
+                if (toggleItemBtn) {
+                    const itemLi = toggleItemBtn.closest('li'); // Find the parent list item
+                    if (!itemLi) return;
+
+                    const images = itemLi.querySelectorAll('.image-thumbnail-container'); // Find images *only* within this item
+                    let isNowVisible = false;
+                    images.forEach(img => {
+                        img.classList.toggle('hidden');
+                        if (!img.classList.contains('hidden')) {
+                            isNowVisible = true;
+                        }
+                    });
+
+                    // Toggle icon
+                    const iconEl = toggleItemBtn.firstElementChild; // Find the current icon (<i> or <svg>)
+                    if (!iconEl) return; // Safety check
+
+                    let newIconName = isNowVisible ? 'image-off' : 'image';
+
+                    // Create a new <i> tag
+                    const newIcon = document.createElement('i');
+                    newIcon.setAttribute('data-lucide', newIconName);
+                    newIcon.className = 'w-5 h-5 text-gray-600'; // Apply the same styling
+
+                    // Replace the old icon (<i> or <svg>) with the new <i> tag
+                    iconEl.replaceWith(newIcon);
+
+                    // Re-create just this one icon
+                    if (typeof lucide !== 'undefined') {
+                        lucide.createIcons({ nodes: [newIcon] });
+                    }
+                }
+                
+                // Toggle Item Documents click (NEW)
+                const toggleDocsBtn = e.target.closest('.btn-toggle-item-docs');
+                if (toggleDocsBtn) {
+                    const itemLi = toggleDocsBtn.closest('li'); // Find the parent list item
+                    if (!itemLi) return;
+
+                    const docs = itemLi.querySelectorAll('.document-file-container'); // Find docs *only* within this item
+                    let isNowVisible = false;
+                    docs.forEach(doc => {
+                        doc.classList.toggle('hidden');
+                        if (!doc.classList.contains('hidden')) {
+                            isNowVisible = true;
+                        }
+                    });
+
+                    // Toggle icon
+                    const iconEl = toggleDocsBtn.firstElementChild; // Find the current icon (<i> or <svg>)
+                    if (!iconEl) return; // Safety check
+
+                    let newIconName = isNowVisible ? 'file-minus' : 'file-text'; // Use different icon states
+
+                    // Create a new <i> tag
+                    const newIcon = document.createElement('i');
+                    newIcon.setAttribute('data-lucide', newIconName);
+                    newIcon.className = 'w-5 h-5 text-gray-600'; // Apply the same styling
+
+                    // Replace the old icon (<i> or <svg>) with the new <i> tag
+                    iconEl.replaceWith(newIcon);
+
+                    // Re-create just this one icon
+                    if (typeof lucide !== 'undefined') {
+                        lucide.createIcons({ nodes: [newIcon] });
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+
+
